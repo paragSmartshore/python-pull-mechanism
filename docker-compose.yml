@@ -1,0 +1,7 @@
+version: '3.8'
+
+services:
+  python-pull-mechanism:
+    build:
+      context: .
+    container_name: python-pull-mechanism
