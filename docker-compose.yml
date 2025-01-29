@@ -1,7 +1,11 @@
 version: '3.8'
 
 services:
-  python-pull-mechanism:
-    build:
-      context: .
-    container_name: python-pull-mechanism
+  fastapi_app:
+    build: .
+    ports:
+      - '8000:8000'
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
