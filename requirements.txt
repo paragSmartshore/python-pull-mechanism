@@ -1,2 +1,5 @@
 fastapi
 uvicorn
+httpx
+boto3
+localstack-client

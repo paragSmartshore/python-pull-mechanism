@@ -1,3 +1,5 @@
 echo "*" > .venv/.gitignore
 todo.md
 .venv/
+notes.txt
+__pycache__
