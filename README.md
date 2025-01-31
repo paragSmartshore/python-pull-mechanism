@@ -16,3 +16,7 @@
 
 - First make sure there is a virtual environment present and also make sure the correct one is selected before installing anything.
 - pip install [name-of-the-package]
+
+## to list all the topics created by SNS
+
+docker exec -it <container-id> awslocal sns list-topics

@@ -10,17 +10,20 @@ services:
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=us-east-1
-      - LOCALSTACK_HOST=localstack
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      - SNS_ENDPOINT=http://localstack:4566
     depends_on:
       - localstack
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
   localstack:
     image: localstack/localstack
     environment:
-      - DEFAULT_REGION=us-east-1
       - SERVICES=sns
+      - DEFAULT_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
     ports:
       - '4566:4566' # LocalStack API Gateway
       - '4510-4559:4510-4559' # To expose SNS for local access
-
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock'
