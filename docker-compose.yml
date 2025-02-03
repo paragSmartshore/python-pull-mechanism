@@ -27,3 +27,13 @@ services:
       - '4510-4559:4510-4559' # To expose SNS for local access
     volumes:
       - '/var/run/docker.sock:/var/run/docker.sock'
+
+  redis:
+    image: redis:alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
