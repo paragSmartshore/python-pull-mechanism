@@ -1,3 +1,4 @@
+import random
 from fastapi import FastAPI
 import boto3
 import httpx
@@ -55,7 +56,16 @@ async def fetch_posts(page: int):
 # Automatically process all pages until no more data is returned (Issue 2)
 @app.get("/")
 async def process_all_posts():
-    global failure_simulated  # Reference the global flag to simulate failure only once
+    # Set up random failure simulation: choose a random page (from 2 to 10) 
+    # and a random number of failures (between 1 and MAX_RETRIES-1) before succeeding.
+    simulate_failure_page = random.randint(2, 10)
+    simulate_failure_attempts_required = random.randint(1, MAX_RETRIES - 1) if MAX_RETRIES > 1 else 0
+    simulate_failures_done = 0
+    logging.info(
+        f"Simulated failure will occur on page {simulate_failure_page} "
+        f"and require {simulate_failure_attempts_required} failure(s) before succeeding."
+    )
+
     combined_posts = []
     retries = 0
 
@@ -66,10 +76,14 @@ async def process_all_posts():
         logging.info(f"Fetching page {current_page}")
         
         try:
-            # Emulate failure midway: trigger a simulated error on a specific page the first time
-            if current_page == SIMULATE_FAILURE_ON_PAGE and not failure_simulated:
-                failure_simulated = True
-                raise Exception(f"Simulated failure on page {current_page}")
+            # Trigger simulated failure on the designated random page until it has failed
+            # the required number of times.
+            if current_page == simulate_failure_page and simulate_failures_done < simulate_failure_attempts_required:
+                simulate_failures_done += 1
+                raise Exception(
+                    f"Simulated failure on page {current_page} "
+                    f"(attempt {simulate_failures_done} of {simulate_failure_attempts_required})"
+                )
             
             posts = await fetch_posts(current_page)
             # If no posts are returned, we have reached the end of available data
@@ -80,7 +94,7 @@ async def process_all_posts():
             combined_posts.extend(posts)
             # Only update the checkpoint after a successful call
             set_last_processed_page(current_page + 1)
-            # Reset retry count for next page
+            # Reset retry count for next page on successful fetch
             retries = 0
 
             # Small delay between requests to avoid overloading the API
