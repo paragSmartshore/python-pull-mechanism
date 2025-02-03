@@ -1,10 +1,11 @@
-import random
 from fastapi import FastAPI
 import boto3
 import httpx
 import redis
 import logging
 import asyncio
+
+from failure_emulation import FailureEmulator
 
 logging.basicConfig(level=logging.INFO)
 
@@ -23,10 +24,8 @@ sns_client = boto3.client(
     endpoint_url=LOCALSTACK_ENDPOINT,
 )
 
-# Configuration for failure simulation and retries
-SIMULATE_FAILURE_ON_PAGE = 3  # Emulate failure on page 3 once
+# Configuration for retries
 MAX_RETRIES = 3
-failure_simulated = False  # Global flag to only simulate the error once
 
 # Utility functions to work with the checkpoint
 def get_last_processed_page():
@@ -56,16 +55,8 @@ async def fetch_posts(page: int):
 # Automatically process all pages until no more data is returned (Issue 2)
 @app.get("/")
 async def process_all_posts():
-    # Set up random failure simulation: choose a random page (from 2 to 10) 
-    # and a random number of failures (between 1 and MAX_RETRIES-1) before succeeding.
-    simulate_failure_page = random.randint(2, 10)
-    simulate_failure_attempts_required = random.randint(1, MAX_RETRIES - 1) if MAX_RETRIES > 1 else 0
-    simulate_failures_done = 0
-    logging.info(
-        f"Simulated failure will occur on page {simulate_failure_page} "
-        f"and require {simulate_failure_attempts_required} failure(s) before succeeding."
-    )
-
+    # Create an instance of FailureEmulator to handle simulated failures
+    failure_emulator = FailureEmulator(MAX_RETRIES)
     combined_posts = []
     retries = 0
 
@@ -76,14 +67,8 @@ async def process_all_posts():
         logging.info(f"Fetching page {current_page}")
         
         try:
-            # Trigger simulated failure on the designated random page until it has failed
-            # the required number of times.
-            if current_page == simulate_failure_page and simulate_failures_done < simulate_failure_attempts_required:
-                simulate_failures_done += 1
-                raise Exception(
-                    f"Simulated failure on page {current_page} "
-                    f"(attempt {simulate_failures_done} of {simulate_failure_attempts_required})"
-                )
+            # Use the separated failure emulation logic
+            failure_emulator.check_failure(current_page)
             
             posts = await fetch_posts(current_page)
             # If no posts are returned, we have reached the end of available data
