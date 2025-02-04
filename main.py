@@ -34,14 +34,18 @@ def get_last_processed_page():
 def set_last_processed_page(page: int):
     r.set("last_processed_page", page)
 
+def get_last_processed_post():
+    return r.get("last_processed_post_index")
+
+def set_last_processed_post(index: int):
+    r.set("last_processed_post_index", index)
+
 # Reset checkpoint on startup (Issue 1)
 @app.on_event("startup")
 async def startup_event():
-    # Either flush the entire Redis DB:
-    # r.flushdb()
-    # Or simply set the starting page to 1:
     set_last_processed_page(1)
-    logging.info("Checkpoint reset to 1 on startup.")
+    set_last_processed_post(-1)
+    logging.info("Checkpoints reset on startup.")
 
 # Helper function to fetch posts for a given page
 async def fetch_posts(page: int):
@@ -49,47 +53,68 @@ async def fetch_posts(page: int):
         response = await client.get(
             f"https://jsonplaceholder.typicode.com/posts?_page={page}&_limit=10"
         )
-        # You could add error handling here if needed
         return response.json()
+
+async def process_post(post, current_page: int, post_index: int, failure_emulator: FailureEmulator):
+    # Simulate failure for specific post
+    # failure_emulator.check_failure(current_page, post_index)
+    
+    # Process the post (you can add more processing logic here)
+    return post
 
 # Automatically process all pages until no more data is returned (Issue 2)
 @app.get("/")
 async def process_all_posts():
-    # Create an instance of FailureEmulator to handle simulated failures
     failure_emulator = FailureEmulator(MAX_RETRIES)
     combined_posts = []
-    retries = 0
+    page_retries = 0
+    post_retries = 0  # New counter specifically for post retries
 
     while True:
-        # Get the current page from checkpoint (default to 1 if not set)
         last_page = get_last_processed_page()
         current_page = int(last_page) if last_page is not None else 1
         logging.info(f"Fetching page {current_page}")
         
         try:
-            # Use the separated failure emulation logic
-            failure_emulator.check_failure(current_page)
-            
             posts = await fetch_posts(current_page)
-            # If no posts are returned, we have reached the end of available data
             if not posts:
                 logging.info("No more posts found; finishing processing.")
                 break
 
-            combined_posts.extend(posts)
-            # Only update the checkpoint after a successful call
-            set_last_processed_page(current_page + 1)
-            # Reset retry count for next page on successful fetch
-            retries = 0
+            last_post_index = int(get_last_processed_post() or -1)
+            
+            i = last_post_index + 1
+            while i < len(posts):
+                try:
+                    processed_post = await process_post(posts[i], current_page, i, failure_emulator)
+                    combined_posts.append(processed_post)
+                    set_last_processed_post(i)
+                    post_retries = 0  # Reset post retries after successful processing
+                    i += 1
+                except Exception as e:
+                    logging.error(f"Error processing post {i} on page {current_page}: {e}")
+                    if post_retries < MAX_RETRIES:
+                        post_retries += 1
+                        logging.info(f"Retrying post {i} on page {current_page} (attempt {post_retries}/{MAX_RETRIES})...")
+                        await asyncio.sleep(1)
+                        continue  # Retry the same post without incrementing i
+                    else:
+                        logging.error(f"Max retries exceeded for post {i} on page {current_page}. Aborting process.")
+                        raise Exception(f"Max retries exceeded for post {i} on page {current_page}") from e
 
-            # Small delay between requests to avoid overloading the API
+            # Reset post index and move to next page
+            set_last_processed_post(-1)
+            set_last_processed_page(current_page + 1)
+            page_retries = 0
+            post_retries = 0
+            
             await asyncio.sleep(0.1)
 
         except Exception as e:
             logging.error(f"Error processing page {current_page}: {e}")
-            if retries < MAX_RETRIES:
-                retries += 1
-                logging.info(f"Retrying page {current_page} (attempt {retries}/{MAX_RETRIES})...")
+            if page_retries < MAX_RETRIES:
+                page_retries += 1
+                logging.info(f"Retrying page {current_page} (attempt {page_retries}/{MAX_RETRIES})...")
                 # Wait a bit before retrying to allow any transient issue to resolve
                 await asyncio.sleep(1)
                 continue  # Do not update checkpoint so we will retry the same page
