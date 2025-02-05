@@ -6,7 +6,9 @@ class FailureEmulator:
         self.max_retries = max_retries
         self.simulate_failure_page = random.randint(2, 10)
         self.simulate_failure_post = random.randint(0, 9)
-        self.simulate_failure_attempts_required = 3 
+        self.simulate_failure_attempts_required = (
+            random.randint(1, max_retries - 1) if max_retries > 1 else 0
+        ) 
         self.simulate_failures_done = 0
         logging.info(
             f"Simulated failure will occur on page {self.simulate_failure_page}, "
