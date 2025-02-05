@@ -57,7 +57,7 @@ async def fetch_posts(page: int):
 
 async def process_post(post, current_page: int, post_index: int, failure_emulator: FailureEmulator):
     # Simulate failure for specific post
-    # failure_emulator.check_failure(current_page, post_index)
+    failure_emulator.check_failure(current_page, post_index)
     
     # Process the post (you can add more processing logic here)
     return post
