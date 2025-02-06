@@ -1,6 +1,6 @@
 import random
 import logging
-
+# This function is primarily fail intentionally only to showcase the retry mechanism added in this project.
 class FailureEmulator:
     def __init__(self, max_retries: int):
         self.max_retries = max_retries
