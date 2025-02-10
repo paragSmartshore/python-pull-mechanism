@@ -1,39 +1,44 @@
 services:
-  fastapi_app:
+  app:
     build: .
+    container_name: app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - '8000:8000'
-    volumes:
-      - .:/app
+    depends_on:
+      - redis
+      - localstack
     environment:
-      - PYTHONUNBUFFERED=1
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
-      - AWS_DEFAULT_REGION=us-east-1
-      - SNS_ENDPOINT=http://localstack:4566
+
+  order_processor:
+    build: .
+    container_name: order_processor
+    command: uvicorn order_processor.main:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - '8001:8001'
     depends_on:
+      - redis
       - localstack
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - '6379:6379'
 
   localstack:
     image: localstack/localstack
+    container_name: localstack
     environment:
       - SERVICES=sns
-      - DEFAULT_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=test
-      - AWS_SECRET_ACCESS_KEY=test
+      - PERSISTENCE=1
     ports:
-      - '4566:4566' # LocalStack API Gateway
-      - '4510-4559:4510-4559' # To expose SNS for local access
-    volumes:
-      - '/var/run/docker.sock:/var/run/docker.sock'
-
-  redis:
-    image: redis:alpine
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
+      - '4566:4566'
 
 volumes:
-  redis_data:
+  localstack_data:

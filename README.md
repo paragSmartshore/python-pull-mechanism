@@ -8,10 +8,6 @@
 
 `docker compose build`
 
-## Command to test fastapi on a particular file:
-
-`fastapi dev app/main.py`
-
 ## To install a new package:
 
 - First make sure there is a virtual environment present and also make sure the correct one is selected before installing anything.
