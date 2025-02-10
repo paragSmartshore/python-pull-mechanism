@@ -3,3 +3,6 @@ todo.md
 .venv/
 notes.txt
 __pycache__
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
