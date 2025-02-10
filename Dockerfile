@@ -8,8 +8,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the application code (main.py) to the container's /app directory
-COPY main.py /app/main.py
+# Copy the entire project into the container
+COPY . .
 
 # Expose  default port
 EXPOSE 8000
